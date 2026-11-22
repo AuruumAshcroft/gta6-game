@@ -1,6 +1,7 @@
-// Combat: fists and a pistol. Melee swings at the nearest pedestrian or cop in
-// range; the pistol fires a hitscan shot from the camera with a tracer line and
-// a muzzle flash, and hurting anyone in front of witnesses raises the heat.
+// Combat: fists and a pistol. Melee swings at the nearest pedestrian or cop
+// in range; the pistol fires a hitscan shot from the camera with a tracer line
+// and a muzzle flash, and hurting anyone in front of witnesses raises the
+// heat.
 import * as THREE from 'three';
 import { PLAYER } from './config.js';
 import { dist2 } from './util.js';
@@ -9,9 +10,7 @@ export class Combat {
   constructor(scene, camera) {
     this.scene = scene;
     this.camera = camera;
-    this.tracer = null;
     this.tracerLife = 0;
-    this.flash = null;
     this.flashLife = 0;
     const tracerMat = new THREE.LineBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: 0.9 });
     const tracerGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
@@ -23,7 +22,7 @@ export class Combat {
     this.raycaster = new THREE.Raycaster();
   }
 
-  /** Melee swing: hits the nearest living ped or police car in front of the player. */
+  /** Melee swing: hits the nearest living ped or police car in front. */
   melee(game) {
     const p = game.player;
     if (p.meleeTimer > 0 || game.playerCar) return null;
@@ -96,15 +95,16 @@ export class Combat {
     return result;
   }
 
+  /** A disabled cruiser stops chasing; it is removed when out of sight. */
   disableCop(game, cop) {
     cop.health = 0;
-    // A disabled cruiser stops chasing and smokes; it is removed when out of sight.
     cop.disabled = true;
     cop.speed = 0;
     game.police.cars = game.police.cars.filter((c) => c !== cop);
     game.sounds.pickup();
   }
 
+  /** Fade the tracer and the muzzle flash. */
   step(dt) {
     if (this.tracerLife > 0) {
       this.tracerLife -= dt;

@@ -1,6 +1,7 @@
-// The HUD: health bar, cash, wanted stars, the mission objective line, a live
-// minimap canvas (roads, beach, buildings, player arrow, police blips, mission
-// marker), and the toast line for story beats. All DOM — no textures to load.
+// The HUD: health bar, cash, wanted stars, the mission objective line, a
+// live minimap canvas (roads, beach, buildings, player arrow, police blips,
+// mission marker), and the toast line for story beats. All DOM — no textures
+// to load.
 import { CITY } from './config.js';
 
 export class HUD {
@@ -100,9 +101,9 @@ export class HUD {
       ctx.closePath(); ctx.fill();
     }
     // Traffic: faint white dots. Police: red dots with a ring.
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';
     for (const car of game.traffic.cars) {
       const [x, y] = toMap(car.x, car.z);
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
       ctx.fillRect(x - 1, y - 1, 2, 2);
     }
     for (const cop of game.police.cars) {

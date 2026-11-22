@@ -36,12 +36,15 @@ export function hasSave() {
   try { return localStorage.getItem(SAVE_KEY) !== null; } catch { return false; }
 }
 
+/** Remember the best cash total; returns the best so far. */
 export function recordBest(cash) {
   try {
     const prev = Number(localStorage.getItem(BEST_KEY) || 0);
     if (cash > prev) localStorage.setItem(BEST_KEY, String(cash));
     return Math.max(prev, cash);
-  } catch { return cash; }
+  } catch {
+    return cash;
+  }
 }
 
 export function readBest() {

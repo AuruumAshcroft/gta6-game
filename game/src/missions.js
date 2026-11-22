@@ -1,13 +1,17 @@
-// Missions: three short jobs with a story hook, played in order. Each mission is
-// a list of stages; a stage is complete when the player (or their car) reaches
-// its marker, steals a car, or hits a wanted level. Completing a mission pays
-// cash and unlocks the next one; the story is told through the briefs.
+// Missions: three short jobs with a story hook, played in order. Each mission
+// is a list of stages; a stage is complete when the player (or their car)
+// reaches its marker, steals a car, or hits a wanted level. Completing a
+// mission pays cash and unlocks the next one; the story is told through the
+// briefs and the toast line.
 import * as THREE from 'three';
 import { MISSIONS } from './config.js';
 import { dist2 } from './util.js';
 
+/** A translucent beam material for the mission marker. */
 function beaconMaterial(color) {
-  return new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+  return new THREE.MeshBasicMaterial({
+    color, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false,
+  });
 }
 
 export class MissionSystem {
@@ -53,7 +57,9 @@ export class MissionSystem {
     this.stage = 0;
     this.done = index >= MISSIONS.length;
     this.showMarker();
-    if (this.onEvent && !this.done) this.onEvent(`${MISSIONS[index].title}: ${MISSIONS[index].brief}`);
+    if (this.onEvent && !this.done) {
+      this.onEvent(`${MISSIONS[index].title}: ${MISSIONS[index].brief}`);
+    }
   }
 
   stageDef() {
@@ -67,16 +73,26 @@ export class MissionSystem {
     return def ? def.label : '';
   }
 
+  /** Show the beacon at the current stage's marker, if it has one. */
   showMarker() {
     this.hideMarker();
     const def = this.stageDef();
-    if (!def || def.kind !== 'reach' && def.kind !== 'escape') { this.target = null; return; }
+    if (!def || (def.kind !== 'reach' && def.kind !== 'escape')) {
+      this.target = null;
+      return;
+    }
     this.target = { x: def.x, z: def.z, label: def.label };
     const group = new THREE.Group();
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 26, 12, 1, true), beaconMaterial(0xffb400));
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.6, 1.6, 26, 12, 1, true),
+      beaconMaterial(0xffb400),
+    );
     beam.position.y = 13;
     group.add(beam);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(2.2, 3.4, 32), new THREE.MeshBasicMaterial({ color: 0xffb400, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(2.2, 3.4, 32),
+      new THREE.MeshBasicMaterial({ color: 0xffb400, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
+    );
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.25;
     group.add(ring);
@@ -101,7 +117,7 @@ export class MissionSystem {
     }
   }
 
-  /** Check the active stage against the game state; returns 'advanced' etc. */
+  /** Check the active stage against the game state; returns what happened. */
   step(game) {
     if (this.done) return null;
     const def = this.stageDef();
@@ -129,6 +145,7 @@ export class MissionSystem {
     return null;
   }
 
+  /** Pulse the beacon. */
   animate(dt) {
     this.markerTime += dt;
     if (this.marker) {

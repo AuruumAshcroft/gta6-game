@@ -1,6 +1,6 @@
 // Solmar City — boot, the fixed-step loop, input, and the state machine.
-// Menu -> playing -> paused / busted, plus the ?shot= staging mode that sets a
-// scene, plays it forward, renders one frame and flags window.__shotReady.
+// Menu -> playing -> paused / busted, plus the ?shot= staging mode that sets
+// a scene, plays it forward, renders one frame and flags window.__shotReady.
 import * as THREE from 'three';
 import { STEP, PLAYER, SAVE_KEY } from './config.js';
 import { clamp, mulberry32 } from './util.js';
@@ -49,9 +49,19 @@ class Game {
     this.menuAngle = 0;
     this.accumulator = 0;
     this.lastTime = performance.now();
-    this.lastHealth = PLAYER.health;
     this.deadTimer = 0;
 
+    this.wireCallbacks();
+    this.spawnParked();
+    this.bindInput();
+    this.bindButtons();
+    window.addEventListener('resize', () => this.resize());
+    this.resize();
+    window.__game = this;
+  }
+
+  /** Hook police and mission events up to the HUD and the save slot. */
+  wireCallbacks() {
     this.police.onCrime = (stars) => {
       if (stars >= 3) this.hud.toast('Three stars — the whole force is after you!', 4);
       else if (stars > 0) this.hud.toast('The cops noticed you.', 3);
@@ -64,13 +74,6 @@ class Game {
       saveGame(this);
     };
     this.missions.onEvent = (text) => this.hud.toast(text, 5);
-
-    this.spawnParked();
-    this.bindInput();
-    this.bindButtons();
-    window.addEventListener('resize', () => this.resize());
-    this.resize();
-    window.__game = this;
   }
 
   resize() {
@@ -99,8 +102,7 @@ class Game {
   }
 
   spawnPlayerCar(x, z, heading) {
-    const car = new Car(this.scene, x, z, heading, 0xd84040, mulberry32(5), false);
-    return car;
+    return new Car(this.scene, x, z, heading, 0xd84040, mulberry32(5), false);
   }
 
   /** Fresh dynamic world: traffic, police, parked cars, player and missions. */
@@ -112,20 +114,9 @@ class Game {
     this.traffic = new Traffic(this.scene, this.city, seed + 14);
     this.police.clear();
     this.police = new Police(this.scene, this.city, seed + 26);
-    this.police.onCrime = (stars) => {
-      if (stars >= 3) this.hud.toast('Three stars — the whole force is after you!', 4);
-      else if (stars > 0) this.hud.toast('The cops noticed you.', 3);
-    };
     this.missions.hideMarker();
     this.missions = new MissionSystem(this.scene, this.city);
-    this.missions.onComplete = (mission) => {
-      this.cash += mission.reward;
-      this.sounds.cash();
-      recordBest(this.cash);
-      this.hud.toast(`Job done: ${mission.title} — +$${mission.reward.toLocaleString('en-US')}`, 5);
-      saveGame(this);
-    };
-    this.missions.onEvent = (text) => this.hud.toast(text, 5);
+    this.wireCallbacks();
     this.player.setPosition(0, 0, 0);
     this.player.health = PLAYER.health;
     this.player.group.visible = true;
@@ -146,7 +137,10 @@ class Game {
         this.player.setPosition(data.player.x, data.player.z, 0);
         this.player.health = data.player.health;
         this.police.stars = data.wanted || 0;
-        this.hud.toast(`Welcome back, Marlo. Cash $${this.cash.toLocaleString('en-US')} — ${this.missions.current() ? this.missions.current().title : 'free roam'}.`, 5);
+        this.hud.toast(
+          `Welcome back, Marlo. Cash $${this.cash.toLocaleString('en-US')} — ${this.missions.current() ? this.missions.current().title : 'free roam'}.`,
+          5,
+        );
       }
     }
     $('start-screen').style.display = 'none';
@@ -228,7 +222,8 @@ class Game {
       if (this.mode === 'playing' && !this.playerCar && e.button === 0) this.combat.shoot(this);
     });
     document.addEventListener('pointerlockchange', () => {
-      $('crosshair').style.display = document.pointerLockElement === this.canvas && !this.playerCar ? 'block' : 'none';
+      $('crosshair').style.display =
+        document.pointerLockElement === this.canvas && !this.playerCar ? 'block' : 'none';
     });
   }
 
@@ -247,7 +242,8 @@ class Game {
       btn.style.color = '#fff';
       btn.addEventListener('click', () => this.startGame(true));
       $('start-btn').after(btn);
-      $('save-note').textContent = `Save found: mission ${(data?.missionIndex ?? 0) + 1} of 3 · best cash $${readBest().toLocaleString('en-US')}`;
+      $('save-note').textContent =
+        `Save found: mission ${(data?.missionIndex ?? 0) + 1} of 3 · best cash $${readBest().toLocaleString('en-US')}`;
     }
   }
 
@@ -257,7 +253,6 @@ class Game {
       const car = this.playerCar;
       this.playerCar = null;
       this.parked.push(car);
-      const side = { x: this.player.x, z: this.player.z };
       this.player.setPosition(car.x - Math.sin(car.heading) * 2.4, car.z + Math.cos(car.heading) * 2.4, car.heading);
       this.player.group.visible = true;
       this.sounds.click();
@@ -289,7 +284,9 @@ class Game {
     if (rammed === 'rammed') {
       this.cameraShake(0.7);
       $('vignette').style.boxShadow = 'inset 0 0 120px 40px rgba(229,72,77,.55)';
-      setTimeout(() => { $('vignette').style.boxShadow = 'inset 0 0 120px 40px rgba(229,72,77,0)'; }, 220);
+      setTimeout(() => {
+        $('vignette').style.boxShadow = 'inset 0 0 120px 40px rgba(229,72,77,0)';
+      }, 220);
     }
     this.missions.step(this);
     this.missions.animate(dt);
@@ -347,8 +344,10 @@ class Game {
     if (k.has('KeyA') || k.has('ArrowLeft')) { fx -= basis.rx; fz -= basis.rz; }
 
     if (this.playerCar) {
-      const throttle = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
-      const steer = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
+      const throttle = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0)
+        - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
+      const steer = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0)
+        - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
       this.playerCar.drive(dt, { throttle, steer, handbrake: k.has('Space') }, this.city);
       this.player.setPosition(this.playerCar.x, this.playerCar.z, this.playerCar.heading);
     } else {
@@ -358,7 +357,9 @@ class Game {
     const target = this.playerCar
       ? { x: this.playerCar.x, y: 0, z: this.playerCar.z }
       : { x: this.player.x, y: 0, z: this.player.z };
-    this.cameraRig.update(dt, target, !!this.playerCar, this.playerCar ? this.playerCar.heading : 0);
+    this.cameraRig.update(
+      dt, target, !!this.playerCar, this.playerCar ? this.playerCar.heading : 0,
+    );
     this.city.follow(target);
     if (this.player.health <= 0 && this.mode === 'playing') this.die();
     this.hud.update(this);
@@ -371,6 +372,7 @@ class Game {
     const dt = Math.min(0.1, (now - this.lastTime) / 1000);
     this.lastTime = now;
     if (this.mode === 'menu') {
+      // Slow orbit over the city behind the start screen.
       this.menuAngle += dt * 0.05;
       const cx = Math.cos(this.menuAngle) * 130, cz = Math.sin(this.menuAngle) * 130;
       this.camera.position.set(cx, 55, cz);
@@ -404,44 +406,45 @@ class Game {
       try {
         stageShot(shot, this);
       } catch (err) {
-        window.__shotError = String(err && err.stack || err);
+        window.__shotError = String((err && err.stack) || err);
       }
-      // Place the camera for the shot, then render.
-      const sc = this.shotCamera;
-      const target = this.playerCar
-        ? { x: this.playerCar.x, z: this.playerCar.z }
-        : { x: this.player.x, z: this.player.z };
-      if (sc?.behind) {
-        // Behind the car, looking forward down the road.
-        const heading = this.playerCar ? this.playerCar.heading : this.player.heading;
-        const fx = Math.cos(heading), fz = Math.sin(heading);
-        const rx = -Math.sin(heading), rz = Math.cos(heading);
-        const bx = target.x - fx * sc.distance + rx * (sc.side || 0);
-        const bz = target.z - fz * sc.distance + rz * (sc.side || 0);
-        this.camera.position.set(bx, sc.height, bz);
-        this.camera.lookAt(target.x, 1.5, target.z);
-      } else if (sc?.front) {
-        // Ahead of the car, looking back: the car fills the frame and the
-        // pursuing police are visible behind it.
-        const heading = this.playerCar ? this.playerCar.heading : this.player.heading;
-        const fx = Math.cos(heading), fz = Math.sin(heading);
-        const rx = -Math.sin(heading), rz = Math.cos(heading);
-        const cx = target.x + fx * sc.distance + rx * (sc.side || 0);
-        const cz = target.z + fz * sc.distance + rz * (sc.side || 0);
-        this.camera.position.set(cx, sc.height, cz);
-        this.camera.lookAt(target.x, 1.5, target.z);
-      } else if (sc?.orbit) {
-        this.cameraRig.yaw = sc.yaw;
-        this.cameraRig.pitch = sc.pitch;
-        this.cameraRig.distance = sc.distance;
-        this.cameraRig.update(0.016, { x: target.x, y: 0, z: target.z }, false, 0);
-      }
+      this.placeShotCamera();
       this.hud.update(this);
       this.renderer.render(this.scene, this.camera);
       window.__shotReady = true;
       return;
     }
     requestAnimationFrame((t) => this.frame(t));
+  }
+
+  /** Put the camera where the staged shot wants it. */
+  placeShotCamera() {
+    const sc = this.shotCamera;
+    const target = this.playerCar
+      ? { x: this.playerCar.x, z: this.playerCar.z }
+      : { x: this.player.x, z: this.player.z };
+    const heading = this.playerCar ? this.playerCar.heading : this.player.heading;
+    const fx = Math.cos(heading), fz = Math.sin(heading);
+    const rx = -Math.sin(heading), rz = Math.cos(heading);
+    if (sc?.behind) {
+      // Behind the car, looking forward down the road.
+      const bx = target.x - fx * sc.distance + rx * (sc.side || 0);
+      const bz = target.z - fz * sc.distance + rz * (sc.side || 0);
+      this.camera.position.set(bx, sc.height, bz);
+      this.camera.lookAt(target.x, 1.5, target.z);
+    } else if (sc?.front) {
+      // Ahead of the car, looking back: the car fills the frame and the
+      // pursuing police are visible behind it.
+      const cx = target.x + fx * sc.distance + rx * (sc.side || 0);
+      const cz = target.z + fz * sc.distance + rz * (sc.side || 0);
+      this.camera.position.set(cx, sc.height, cz);
+      this.camera.lookAt(target.x, 1.5, target.z);
+    } else if (sc?.orbit) {
+      this.cameraRig.yaw = sc.yaw;
+      this.cameraRig.pitch = sc.pitch;
+      this.cameraRig.distance = sc.distance;
+      this.cameraRig.update(0.016, { x: target.x, y: 0, z: target.z }, false, 0);
+    }
   }
 }
 

@@ -1,14 +1,14 @@
 // Vehicles: box-built cars (body, cabin, wheels, lights) and simple arcade
-// driving physics — acceleration, steering that tightens with speed, braking,
-// and a slide when the handbrake is held. No physics engine, no assets.
+// driving — acceleration, steering that tightens with speed, braking, and a
+// slide when the handbrake is held. No physics engine, no assets.
 import * as THREE from 'three';
 import { CAR, PALETTE } from './config.js';
 import { clamp, damp, pick } from './util.js';
 
 const PAINTS = [0xd84040, 0x3a6fd8, 0xf2c94c, 0x2ecc71, 0xe8e8e8, 0x222831, 0x9b59b6, 0xe67e22];
 
-/** Build one car mesh group, facing +X. Returns { group, wheels, lights }. */
-export function buildCarMesh(paint, rng) {
+/** Build one car mesh group, facing +X. Returns { group, wheels }. */
+export function buildCarMesh(paint) {
   const group = new THREE.Group();
   const bodyMat = new THREE.MeshLambertMaterial({ color: paint });
   const glassMat = new THREE.MeshLambertMaterial({ color: PALETTE.glass });
@@ -66,20 +66,28 @@ export class Car {
     this.steer = 0;
     this.isPolice = isPolice;
     this.health = 100;
+    this.disabled = false;
     this.group.position.set(x, 0, z);
     this.group.rotation.y = -heading;
     scene.add(this.group);
-    if (isPolice) {
-      const barMat = new THREE.MeshLambertMaterial({ color: 0x2244ff, emissive: 0x2233aa });
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.18, 0.5), barMat);
-      bar.position.set(-0.25, 1.75, 0);
-      this.group.add(bar);
-      this.lightBar = bar;
-      const redMat = new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xaa1111 });
-      const red = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.18, 0.5), redMat);
-      red.position.set(-0.25, 1.75, 0.28);
-      this.group.add(red);
-    }
+    if (isPolice) this.addLightBar();
+  }
+
+  /** Blue bar + red half on the roof, flashing while chasing. */
+  addLightBar() {
+    const bar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.9, 0.18, 0.5),
+      new THREE.MeshLambertMaterial({ color: 0x2244ff, emissive: 0x2233aa }),
+    );
+    bar.position.set(-0.25, 1.75, 0);
+    this.group.add(bar);
+    this.lightBar = bar;
+    const red = new THREE.Mesh(
+      new THREE.BoxGeometry(0.42, 0.18, 0.5),
+      new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xaa1111 }),
+    );
+    red.position.set(-0.25, 1.75, 0.28);
+    this.group.add(red);
   }
 
   /** Arcade drive step. input: { throttle -1..1, steer -1..1, handbrake }. */
@@ -89,8 +97,8 @@ export class Car {
     const rate = forward > 0 ? CAR.accel : forward < 0 ? CAR.brake : CAR.brake * 0.6;
     this.speed = damp(this.speed, target, rate / CAR.maxSpeed, dt);
     if (input.handbrake) this.speed = damp(this.speed, 0, 4, dt);
-    // Bicycle-model steering: the wheel angle shrinks as speed rises, so the car
-    // stays controllable on the highway and nimble in the streets.
+    // Bicycle-model steering: the wheel angle shrinks as speed rises, so the
+    // car stays controllable on the highway and nimble in the streets.
     const speedFrac = clamp(Math.abs(this.speed) / CAR.maxSpeed, 0, 1);
     const maxAngle = 0.55 + (0.13 - 0.55) * speedFrac;
     const angle = clamp(input.steer, -1, 1) * maxAngle;
@@ -116,15 +124,14 @@ export class Car {
 
   /** Simple chase steering toward a point, used by police and traffic. */
   steerToward(tx, tz, dt, speed, city) {
-    const dx = tx - this.x, dz = tz - this.z;
-    const want = Math.atan2(dz, dx);
+    const want = Math.atan2(tz - this.z, tx - this.x);
     let d = want - this.heading;
     while (d > Math.PI) d -= Math.PI * 2;
     while (d < -Math.PI) d += Math.PI * 2;
     const steer = clamp(d * 1.6, -1, 1);
     this.drive(dt, { throttle: 1, steer, handbrake: false }, city);
     this.speed = Math.min(this.speed, speed);
-    return Math.hypot(dx, dz);
+    return Math.hypot(tx - this.x, tz - this.z);
   }
 
   setPosition(x, z, heading) {

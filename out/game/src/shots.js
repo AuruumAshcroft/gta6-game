@@ -1,26 +1,26 @@
 // Screenshot staging: ?shot=chase|street|mission|sunset. Each scene sets the
-// real game to a chosen state — a police chase, a busy sidewalk, a mission drive,
-// a sunset cruise — then plays the real simulation forward with a scripted
-// driver, so the frame is exactly what playing the game looks like. The same
-// seed always gives the same frame. No shot is posed with anything the game
-// cannot do.
+// real game to a chosen state — a police chase, a busy sidewalk, a mission
+// drive, a sunset cruise — then plays the real simulation forward with a
+// scripted driver, so the frame is exactly what playing the game looks like.
+// The same seed always gives the same frame. No shot is posed with anything
+// the game cannot do.
 import { STEP } from './config.js';
 
-/** Drive straight along a road, steering gently back to the centre line. */
+/** Steer a car straight along its road, drifting back to the centre line. */
 function driveStraight(game, dt, throttle = 1) {
   const car = game.playerCar;
   if (!car) return;
-  const road = game.city.roadCentres().reduce((best, r) => (Math.abs(r - car.z) < Math.abs(best - car.z) ? r : best), 0);
-  const err = road - car.z;
-  const want = Math.atan2(err * 0.06, 1);
+  const road = game.city.roadCentres().reduce(
+    (best, r) => (Math.abs(r - car.z) < Math.abs(best - car.z) ? r : best), 0,
+  );
+  const want = Math.atan2((road - car.z) * 0.06, 1);
   let dh = want - car.heading;
   while (dh > Math.PI) dh -= Math.PI * 2;
   while (dh < -Math.PI) dh += Math.PI * 2;
-  const steer = Math.max(-1, Math.min(1, dh * 2));
-  car.drive(dt, { throttle, steer, handbrake: false }, game.city);
+  car.drive(dt, { throttle, steer: Math.max(-1, Math.min(1, dh * 2)), handbrake: false }, game.city);
 }
 
-/** Drive through a list of waypoints (used for the mission drive, which turns). */
+/** Drive through waypoints in order (used for the mission drive, which turns). */
 function driveWaypoints(game, waypoints, seconds) {
   let wi = 0;
   for (let i = 0; i < seconds * 60; i += 1) {
@@ -37,7 +37,7 @@ function driveWaypoints(game, waypoints, seconds) {
   }
 }
 
-/** Put the player in a car on a road, heading the given way, at speed. */
+/** Put the player in a fresh car on a road, already moving. */
 function putInCar(game, x, z, heading) {
   const car = game.spawnPlayerCar(x, z, heading);
   car.speed = 24;
@@ -55,9 +55,9 @@ export function stageShot(name, game) {
   const city = game.city;
 
   if (name === 'chase') {
-    // Cover: a 3-star chase — the player speeding down a road at a pace the
-    // cruisers can close on, two of them right behind.
-    putInCar(game, -60, 30, 0);
+    // Cover: a 3-star chase — the player speeding down a road, two cruisers
+    // staged right behind the car so they read clearly in the frame.
+    const car = putInCar(game, -60, 30, 0);
     game.police.stars = 3;
     game.police.quietTime = 0;
     game.missions.setIndex(0);
@@ -67,13 +67,18 @@ export function stageShot(name, game) {
       driveStraight(game, STEP, 0.65);
       game.stepWorld(STEP);
     }
+    // Two cruisers tucked in behind the player car, same lane, same heading.
+    const fx = Math.cos(car.heading), fz = Math.sin(car.heading);
+    game.police.placeCruiser(car.x - fx * 11, car.z - fz * 11, car.heading);
+    game.police.placeCruiser(car.x - fx * 19, car.z - fz * 19, car.heading);
     game.shotCamera = { front: true, height: 4.2, distance: 15, side: 6 };
     return 'chase';
   }
 
   if (name === 'mission') {
     // A mission drive: the player racing down the beach road toward the marina
-    // beacon, one cruiser already on their tail.
+    // beacon, one cruiser already on their tail. The camera sits off to the
+    // side so the beacon beam clears the mission title at the top of the HUD.
     putInCar(game, -30, 60, Math.PI / 2);
     game.missions.setIndex(0);
     game.missions.stage = 1; // already stole the car: drive to the marina
@@ -85,7 +90,7 @@ export function stageShot(name, game) {
       game.playerCar.drive(STEP, { throttle: 0, steer: 0, handbrake: true }, city);
       game.stepWorld(STEP);
     }
-    game.shotCamera = { behind: true, height: 4.5, distance: 14, side: 0 };
+    game.shotCamera = { behind: true, height: 5, distance: 14, side: -9 };
     return 'mission';
   }
 

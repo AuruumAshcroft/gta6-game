@@ -1,6 +1,7 @@
-// The wanted system: crimes raise stars (1–5), police cars spawn at a distance
-// and chase the player, ramming to damage them. Stay quiet and out of sight and
-// the stars decay one at a time; at zero the heat is off and the cops leave.
+// The wanted system: crimes raise stars (1–5), police cars spawn at a
+// distance and chase the player, ramming to damage them. Stay quiet and out
+// of sight and the stars decay one at a time; at zero the heat is off and the
+// cops leave.
 import * as THREE from 'three';
 import { POLICE, PALETTE } from './config.js';
 import { clamp, mulberry32, dist2 } from './util.js';
@@ -13,13 +14,14 @@ export class Police {
     this.rng = mulberry32(seed);
     this.stars = 0;
     this.cars = [];
-    this.quietTime = 0;
+    this.quietTime = 0;    // seconds since the last crime
     this.decayTimer = 0;
     this.ramTimer = 0;
-    this.flash = 0;
+    this.flash = 0;        // light-bar phase
     this.onCrime = null;   // set by main: (stars) => void
   }
 
+  /** A crime happened: raise the heat and reset the quiet clock. */
   crime(amount) {
     const before = this.stars;
     this.stars = clamp(this.stars + amount, 0, 5);
@@ -28,8 +30,8 @@ export class Police {
     if (this.stars !== before && this.onCrime) this.onCrime(this.stars);
   }
 
-  /** Where a cop spawns: on a road, off-screen from the player — preferably the
-   * player's own road, so the chase arrives visibly down the same street. */
+  /** Where a cop spawns: on a road, off-screen from the player — preferably
+   * the player's own road, so the chase arrives visibly down the same street. */
   spawnPoint(playerX, playerZ) {
     const roads = this.city.roadCentres();
     const half = this.city.cityHalf();
@@ -50,6 +52,14 @@ export class Police {
       if (dist2(p.x, p.z, playerX, playerZ) > POLICE.spawnDistance * POLICE.spawnDistance) return p;
     }
     return { x: playerX + 70, z: playerZ };
+  }
+
+  /** Place a cruiser at an exact spot (used to stage the chase screenshot). */
+  placeCruiser(x, z, heading) {
+    const car = new Car(this.scene, x, z, heading, PALETTE.police, this.rng, true);
+    car.speed = 24;
+    this.cars.push(car);
+    return car;
   }
 
   step(dt, player, playerCar, city) {
@@ -80,6 +90,7 @@ export class Police {
 
     // Chase: steer at the player, ram on contact, flash the light bar.
     for (const car of this.cars) {
+      if (car.disabled) continue;
       const d = car.steerToward(px, pz, dt, POLICE.chaseSpeed, city);
       const close = Math.hypot(car.x - px, car.z - pz);
       if (close < 4.6 && this.ramTimer <= 0) {

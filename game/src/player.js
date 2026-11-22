@@ -1,10 +1,11 @@
 // The player on foot: a low-poly figure (torso, head, swinging limbs) with
 // WASD movement relative to the camera, and the third-person orbit camera that
-// follows on foot and chases the car while driving.
+// follows on foot and swings behind the car while driving.
 import * as THREE from 'three';
 import { PLAYER } from './config.js';
 import { clamp, damp, angleDelta } from './util.js';
 
+/** A boxy person: torso, head, hair, two arms, two legs. Limbs swing. */
 export function buildPersonMesh(shirt, pants) {
   const group = new THREE.Group();
   const skin = new THREE.MeshLambertMaterial({ color: 0xd9a066 });
@@ -18,16 +19,22 @@ export function buildPersonMesh(shirt, pants) {
   head.position.y = 1.72;
   head.castShadow = true;
   group.add(head);
-  const hair = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.16, 0.44), new THREE.MeshLambertMaterial({ color: 0x2b2118 }));
+  const hair = new THREE.Mesh(
+    new THREE.BoxGeometry(0.44, 0.16, 0.44),
+    new THREE.MeshLambertMaterial({ color: 0x2b2118 }),
+  );
   hair.position.y = 1.96;
   group.add(hair);
   const limbs = {};
-  for (const [name, x, y, mat, w] of [
-    ['armL', -0.4, 1.28, skin, 0.18], ['armR', 0.4, 1.28, skin, 0.18],
-    ['legL', -0.17, 0.62, pantsMat, 0.24], ['legR', 0.17, 0.62, pantsMat, 0.24],
-  ]) {
+  const parts = [
+    ['armL', -0.4, 1.28, skin, 0.18],
+    ['armR', 0.4, 1.28, skin, 0.18],
+    ['legL', -0.17, 0.62, pantsMat, 0.24],
+    ['legR', 0.17, 0.62, pantsMat, 0.24],
+  ];
+  for (const [name, x, y, mat, w] of parts) {
     const limb = new THREE.Mesh(new THREE.BoxGeometry(w, 0.72, w), mat);
-    limb.geometry.translate(0, -0.36, 0);
+    limb.geometry.translate(0, -0.36, 0); // pivot at the top, so it swings
     limb.position.set(x, y, 0);
     limb.castShadow = true;
     group.add(limb);
@@ -47,7 +54,7 @@ export class Player {
     this.health = PLAYER.health;
     this.walkPhase = 0;
     this.moving = false;
-    this.invulnerable = 0;
+    this.invulnerable = 0;  // seconds of post-hit grace
     this.meleeTimer = 0;
     this.pistolTimer = 0;
     this.group.position.set(x, 0, z);
@@ -57,15 +64,14 @@ export class Player {
   /** Move on foot. move: {x, z} in world space, run: boolean. */
   step(dt, move, run, city) {
     const speed = run ? PLAYER.runSpeed : PLAYER.walkSpeed;
-    const mx = move.x, mz = move.z;
-    const len = Math.hypot(mx, mz);
+    const len = Math.hypot(move.x, move.z);
     this.moving = len > 0.01;
     if (this.moving) {
-      const nx = this.x + (mx / len) * speed * dt;
-      const nz = this.z + (mz / len) * speed * dt;
+      const nx = this.x + (move.x / len) * speed * dt;
+      const nz = this.z + (move.z / len) * speed * dt;
       const fixed = city.resolveCollision(nx, nz, PLAYER.radius);
       this.x = fixed.x; this.z = fixed.z;
-      const want = Math.atan2(mz, mx);
+      const want = Math.atan2(move.z, move.x);
       this.heading += angleDelta(this.heading, want) * Math.min(1, dt * 12);
       this.walkPhase += dt * speed * 1.6;
     }
@@ -81,6 +87,7 @@ export class Player {
     this.pistolTimer = Math.max(0, this.pistolTimer - dt);
   }
 
+  /** Take damage, unless inside the grace window. Returns true if it landed. */
   hurt(amount) {
     if (this.invulnerable > 0) return false;
     this.health = Math.max(0, this.health - amount);
@@ -135,6 +142,9 @@ export class ChaseCamera {
 
   /** World-space move direction for WASD, from the camera yaw. */
   moveBasis() {
-    return { fx: Math.cos(this.yaw), fz: Math.sin(this.yaw), rx: -Math.sin(this.yaw), rz: Math.cos(this.yaw) };
+    return {
+      fx: Math.cos(this.yaw), fz: Math.sin(this.yaw),
+      rx: -Math.sin(this.yaw), rz: Math.cos(this.yaw),
+    };
   }
 }

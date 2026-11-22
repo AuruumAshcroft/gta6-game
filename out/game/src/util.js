@@ -1,6 +1,7 @@
-// Small shared helpers: a seeded RNG so the city is identical every run,
-// plus the clamps and angle math the simulation uses everywhere.
+// Small shared helpers: a seeded RNG so the city is the same every run,
+// plus the clamps and angle math the simulation leans on everywhere.
 
+/** Deterministic RNG (mulberry32). Same seed, same stream, every run. */
 export function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {
@@ -13,9 +14,11 @@ export function mulberry32(seed) {
 
 export function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 export function lerp(a, b, t) { return a + (b - a) * t; }
+
+/** Frame-rate-independent approach: move a toward b, faster when far. */
 export function damp(a, b, lambda, dt) { return lerp(a, b, 1 - Math.exp(-lambda * dt)); }
 
-/** Shortest signed angle from a to b, in (-PI, PI]. */
+/** Shortest signed turn from angle a to angle b, in (-PI, PI]. */
 export function angleDelta(a, b) {
   let d = (b - a) % (Math.PI * 2);
   if (d > Math.PI) d -= Math.PI * 2;
@@ -23,10 +26,11 @@ export function angleDelta(a, b) {
   return d;
 }
 
+/** Squared distance on the ground plane — cheaper than a square root. */
 export function dist2(ax, az, bx, bz) {
   const dx = ax - bx, dz = az - bz;
   return dx * dx + dz * dz;
 }
 
-/** Pick one of `items` with the seeded RNG. */
+/** Pick one item from an array with the seeded RNG. */
 export function pick(rng, items) { return items[Math.floor(rng() * items.length)]; }

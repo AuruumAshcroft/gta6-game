@@ -23,6 +23,7 @@ export class Traffic {
     this.spawnPeds();
   }
 
+  /** A random point on a random road. */
   randomRoadPoint() {
     const rng = this.rng;
     const road = pick(rng, this.roads);
@@ -42,15 +43,17 @@ export class Traffic {
     }
   }
 
+  /** The next road crossing along the car's current axis. */
   nextIntersection(car) {
     const half = this.city.cityHalf();
-    // Drive along the current axis to the next road crossing, then turn.
     const alongX = Math.abs(Math.sin(car.heading)) < 0.7;
     const pos = alongX ? car.x : car.z;
     const dir = alongX ? Math.cos(car.heading) : Math.sin(car.heading);
-    let next = pos + dir * 60;
-    next = Math.max(-half, Math.min(half, next));
-    const cross = this.roads.reduce((best, r) => (Math.abs(r - next) < Math.abs(best - next) ? r : best), this.roads[0]);
+    let next = Math.max(-half, Math.min(half, pos + dir * 60));
+    const cross = this.roads.reduce(
+      (best, r) => (Math.abs(r - next) < Math.abs(best - next) ? r : best),
+      this.roads[0],
+    );
     if (alongX) return { x: cross, z: car.z };
     return { x: car.x, z: cross };
   }
@@ -97,8 +100,7 @@ export class Traffic {
       // Lane offset: keep right of the road centre.
       const px = -Math.sin(car.heading) * car.lane;
       const pz = Math.cos(car.heading) * car.lane;
-      const tx = car.target.x + px, tz = car.target.z + pz;
-      const want = Math.atan2(tz - car.z, tx - car.x);
+      const want = Math.atan2(car.target.z + pz - car.z, car.target.x + px - car.x);
       let dh = want - car.heading;
       while (dh > Math.PI) dh -= Math.PI * 2;
       while (dh < -Math.PI) dh += Math.PI * 2;
@@ -113,7 +115,10 @@ export class Traffic {
     for (const ped of this.peds) {
       if (!ped.alive) continue;
       ped.walkTime -= dt;
-      if (ped.walkTime <= 0) { ped.heading += Math.PI * (0.5 + this.rng()); ped.walkTime = 5 + this.rng() * 9; }
+      if (ped.walkTime <= 0) {
+        ped.heading += Math.PI * (0.5 + this.rng());
+        ped.walkTime = 5 + this.rng() * 9;
+      }
       ped.x += Math.cos(ped.heading) * ped.speed * dt;
       ped.z += Math.sin(ped.heading) * ped.speed * dt;
       const fixed = this.city.resolveCollision(ped.x, ped.z, 0.5);
@@ -152,6 +157,7 @@ export class Traffic {
     return best;
   }
 
+  /** Knock a pedestrian down; they stay on the ground. */
   knockPed(ped) {
     ped.alive = false;
     ped.group.rotation.z = Math.PI / 2;

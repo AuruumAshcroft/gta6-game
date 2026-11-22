@@ -1,17 +1,22 @@
-// Solmar City — every tuning number and colour in one place.
-// A sun-soaked coastal city: a road grid, a beach on the south edge, palm trees,
-// low-poly buildings. The playfield is metres; the renderer scales to the window.
+// Solmar City — all tuning in one place.
+//
+// A sun-soaked coastal city: a 7x7 road grid, a beach on the south edge, palm
+// trees, low-poly buildings. Distances are metres; the renderer scales to the
+// window. Change a number here and the whole game retunes.
 
-export const STEP = 1 / 60; // fixed simulation step, seconds
+export const STEP = 1 / 60; // fixed simulation step, in seconds
 
+// The city grid. Roads are spaced PITCH metres apart; the beach strip and the
+// sea sit south of the last road (+Z is south).
 export const CITY = {
-  blocks: 7,          // blocks per side of the grid
+  blocks: 7,          // blocks per side
   block: 46,          // block size, metres
   road: 14,           // road width, metres
   beach: 46,          // beach strip depth on the south edge
-  wall: 2.2,          // building collision padding
+  wall: 2.2,          // collision padding around buildings
 };
 
+// The player on foot.
 export const PLAYER = {
   walkSpeed: 6,
   runSpeed: 10,
@@ -26,30 +31,38 @@ export const PLAYER = {
   pistolRange: 90,
 };
 
+// Arcade car handling.
 export const CAR = {
-  accel: 22,
-  brake: 34,
-  reverse: 10,
-  maxSpeed: 38,
+  accel: 22,          // m/s^2 toward top speed
+  brake: 34,          // m/s^2 when reversing / stopping
+  reverse: 10,        // m/s^2 in reverse
+  maxSpeed: 38,       // m/s forward (~137 km/h)
   maxReverse: 12,
-  steer: 1.9,
-  grip: 6,
-  radius: 2.4,
+  steer: 1.9,         // steering responsiveness
+  grip: 6,            // how fast speed settles toward its target
+  radius: 2.4,        // collision radius
 };
 
-export const TRAFFIC = { cars: 14, peds: 22, carSpeed: 9, pedSpeed: 1.6 };
+export const TRAFFIC = {
+  cars: 14,
+  peds: 22,
+  carSpeed: 9,
+  pedSpeed: 1.6,
+};
 
+// The wanted system.
 export const POLICE = {
-  maxActive: 4,
-  chaseSpeed: 40,
+  maxActive: 4,             // cruisers on the street at most
+  chaseSpeed: 40,           // m/s, slightly faster than the player's car
   ramDamage: 8,
-  ramCooldown: 1.2,
-  spawnDistance: 55,
+  ramCooldown: 1.2,         // seconds between rams
+  spawnDistance: 55,        // cruisers appear at least this far away
   despawnDistance: 130,
-  decayQuietSeconds: 18,   // no crime for this long starts star decay
-  decayStepSeconds: 9,     // one star per this many quiet seconds
+  decayQuietSeconds: 18,    // no crime this long before stars start to fall
+  decayStepSeconds: 9,      // one star per this many quiet seconds
 };
 
+// Rico's three jobs, in order. Rewards are dollars.
 export const MISSIONS = [
   {
     id: 'getaway',
