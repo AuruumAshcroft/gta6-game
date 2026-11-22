@@ -3,16 +3,92 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<link rel="icon" href="data:,">
+<title>Solmar City — Heat on the Coast</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a121a; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #f5f7fa; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+  #hud .top-left { position: absolute; top: 14px; left: 16px; }
+  #health-bar { width: 210px; height: 14px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.5); border-radius: 3px; overflow: hidden; }
+  #health-fill { height: 100%; width: 100%; background: #37c978; }
+  #health-text { font-size: 12px; margin-top: 2px; }
+  #cash { font-size: 26px; font-weight: 800; margin-top: 6px; color: #7dff9e; }
+  #stars { position: absolute; top: 12px; right: 210px; font-size: 30px; letter-spacing: 4px; color: rgba(255,255,255,.35); }
+  #mission-box { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; max-width: 560px; }
+  #mission { font-size: 15px; font-weight: 800; letter-spacing: 1px; color: #ffb400; }
+  #objective { font-size: 14px; margin-top: 2px; }
+  #toast { position: absolute; top: 128px; left: 50%; transform: translateX(-50%); font-size: 15px; background: rgba(0,0,0,.6); padding: 8px 16px; border-radius: 6px; opacity: 0; transition: opacity .4s; max-width: 640px; text-align: center; }
+  #speed { position: absolute; right: 22px; bottom: 210px; font-size: 26px; font-weight: 800; }
+  #minimap { position: absolute; right: 16px; bottom: 16px; width: 180px; height: 180px; border: 2px solid rgba(255,255,255,.65); border-radius: 50%; background: rgba(10,18,26,.78); }
+  #hint { position: absolute; left: 16px; bottom: 16px; font-size: 12px; line-height: 1.7; opacity: .85; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; display: none; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #fff; }
+  #crosshair::before { left: 6px; top: 0; width: 2px; height: 14px; }
+  #crosshair::after { left: 0; top: 6px; width: 14px; height: 2px; }
+  #vignette { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px 40px rgba(229,72,77,.0); transition: box-shadow .15s; }
+  .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(6,12,20,.72); color: #f5f7fa; text-align: center; z-index: 5; }
+  .overlay h1 { font-size: 54px; margin: 0; letter-spacing: 2px; color: #ffb400; text-shadow: 0 3px 0 #b3541e, 0 6px 24px rgba(0,0,0,.6); }
+  .overlay h2 { font-size: 20px; font-weight: 400; margin: 8px 0 0; opacity: .9; }
+  .overlay p { max-width: 620px; font-size: 15px; line-height: 1.7; margin: 18px 0 0; }
+  .overlay .controls { font-size: 14px; line-height: 2; margin-top: 18px; background: rgba(255,255,255,.08); padding: 12px 26px; border-radius: 8px; }
+  .overlay button { margin-top: 26px; font-size: 19px; font-weight: 700; padding: 13px 42px; border: 0; border-radius: 8px; background: #ffb400; color: #201503; cursor: pointer; }
+  .overlay button:hover { background: #ffc93e; }
+  .overlay .small { font-size: 12px; opacity: .7; margin-top: 16px; }
+  #pause-screen, #dead-screen { display: none; }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 </style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<canvas id="game" aria-label="Solmar City: an open-world crime game. Drive, steal cars, outrun the police and finish Rico's jobs."></canvas>
+<div id="hud">
+  <div class="top-left">
+    <div id="health-bar"><div id="health-fill"></div></div>
+    <div id="health-text">100</div>
+    <div id="cash">$0</div>
+  </div>
+  <div id="stars">☆☆☆☆☆</div>
+  <div id="mission-box"><div id="mission">Solmar City</div><div id="objective"></div></div>
+  <div id="toast"></div>
+  <div id="speed"></div>
+  <canvas id="minimap" width="180" height="180"></canvas>
+  <div id="hint">WASD move / drive &nbsp;·&nbsp; Mouse look &nbsp;·&nbsp; E steal / exit car<br>F punch &nbsp;·&nbsp; Click shoot &nbsp;·&nbsp; Shift run &nbsp;·&nbsp; Space handbrake<br>Esc pause &nbsp;·&nbsp; M mute &nbsp;·&nbsp; progress saves automatically</div>
+  <div id="crosshair"></div>
+</div>
+<div id="vignette"></div>
+
+<div id="start-screen" class="overlay">
+  <h1>SOLMAR CITY</h1>
+  <h2>Heat on the Coast</h2>
+  <p>You are Marlo Vane, a driver with no money and a fast reputation. Rico, a fixer
+  who runs the marina, has three jobs for you — and the Solmar police are already
+  watching. Steal cars, lose the heat, get paid.</p>
+  <div class="controls">
+    WASD — walk / drive &nbsp;·&nbsp; Mouse — look<br>
+    E — steal a car / get out &nbsp;·&nbsp; F — punch &nbsp;·&nbsp; Click — shoot<br>
+    Shift — run &nbsp;·&nbsp; Space — handbrake &nbsp;·&nbsp; Esc — pause
+  </div>
+  <button id="start-btn">START ENGINE</button>
+  <div class="small" id="save-note"></div>
+</div>
+
+<div id="pause-screen" class="overlay">
+  <h1>PAUSED</h1>
+  <p>Take a breath. The heat waits for no one — except right now.</p>
+  <button id="resume-btn">RESUME</button>
+  <button id="save-btn" style="background:#3a6fd8;color:#fff">SAVE GAME</button>
+  <div class="small">Progress also saves automatically when you finish a mission.</div>
+</div>
+
+<div id="dead-screen" class="overlay">
+  <h1>BUSTED</h1>
+  <p id="dead-text">The Solmar police caught up with you. The car is impounded, the cash is lighter.</p>
+  <button id="respawn-btn">GET BACK OUT THERE</button>
+</div>
+
 <p id="status" role="status" aria-live="polite"></p>
 <script type="module" src="./src/main.js"></script>
 </body>

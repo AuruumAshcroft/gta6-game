@@ -1,61 +1,96 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
+// Solmar City — every tuning number and colour in one place.
+// A sun-soaked coastal city: a road grid, a beach on the south edge, palm trees,
+// low-poly buildings. The playfield is metres; the renderer scales to the window.
 
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
+export const STEP = 1 / 60; // fixed simulation step, seconds
 
-/** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
-export const STEP = 1 / 60;
+export const CITY = {
+  blocks: 7,          // blocks per side of the grid
+  block: 46,          // block size, metres
+  road: 14,           // road width, metres
+  beach: 46,          // beach strip depth on the south edge
+  wall: 2.2,          // building collision padding
+};
 
 export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+  walkSpeed: 6,
+  runSpeed: 10,
+  radius: 0.55,
+  height: 1.8,
+  health: 100,
+  meleeRange: 2.2,
+  meleeDamage: 34,
+  meleeCooldown: 0.45,
+  pistolDamage: 34,
+  pistolCooldown: 0.28,
+  pistolRange: 90,
 };
 
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
+export const CAR = {
+  accel: 22,
+  brake: 34,
+  reverse: 10,
+  maxSpeed: 38,
+  maxReverse: 12,
+  steer: 1.9,
+  grip: 6,
+  radius: 2.4,
 };
 
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
+export const TRAFFIC = { cars: 14, peds: 22, carSpeed: 9, pedSpeed: 1.6 };
+
+export const POLICE = {
+  maxActive: 4,
+  chaseSpeed: 40,
+  ramDamage: 8,
+  ramCooldown: 1.2,
+  spawnDistance: 55,
+  despawnDistance: 130,
+  decayQuietSeconds: 18,   // no crime for this long starts star decay
+  decayStepSeconds: 9,     // one star per this many quiet seconds
 };
 
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
-
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
+export const MISSIONS = [
+  {
+    id: 'getaway',
+    title: 'M1 — Getaway Driver',
+    brief: 'Rico needs a driver. Steal any car, then reach the marina pickup.',
+    objective: 'Steal a car and drive to the marina marker',
+    reward: 500,
+  },
+  {
+    id: 'pickup',
+    title: 'M2 — The Pickup',
+    brief: 'A package waits at the north garage. Grab it on foot, deliver it to the beach bar. The cops are watching — expect heat.',
+    objective: 'Pick up the package, then deliver it to the beach bar',
+    reward: 800,
+  },
+  {
+    id: 'lose-heat',
+    title: 'M3 — Lose the Heat',
+    brief: 'The ambush is on. Get to 3 stars, then shake every cop and reach the hideout.',
+    objective: 'Reach 3 stars, then lose the cops and reach the hideout',
+    reward: 1200,
+  },
+];
 
 export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
+  sky: 0x8ec9ee,
+  sun: 0xfff2d0,
+  sand: 0xe8d29a,
+  sea: 0x2e7f9e,
+  grass: 0x7fae5a,
+  asphalt: 0x3a3f46,
+  sidewalk: 0x9aa0a8,
+  line: 0xf5d76e,
+  building: [0xe8b48a, 0xd9a06f, 0xc98f6a, 0xb7c4c9, 0xe0cfa8, 0xa8b8a0],
+  glass: 0x2c3e50,
+  hud: '#f5f7fa',
+  accent: '#ffb400',
+  police: '#1c4fd6',
+  danger: '#e5484d',
 };
 
 export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';
+export const SAVE_KEY = 'solmar-city.save.v1';
+export const BEST_KEY = 'solmar-city.best.v1';
